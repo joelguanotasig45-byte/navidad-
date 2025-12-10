@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monitoreo de Temperaturas — Instituto Vida Nueva</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif;
+
+      /* 🎄 Fondo más navideño */
+      background-image: url('https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=1600&q=80');
+      background-size: cover;
+      background-position: center;
+
+      color: #f3f9ff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .snowflake {
+        position: fixed;
+        top: -10px;
+        color: white;
+        font-size: 1em;
+        opacity: 0.9;
+        pointer-events: none;
+        animation: fall linear infinite;
+        text-shadow: 0 0 8px rgba(255,255,255,0.9);
+    }
+
+    @keyframes fall {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(110vh); }
+    }
+
+    .overlay {
+      backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,15,4,0.65));
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    /* 🎅 Título más navideño */
+    .brand-title {
+      font-weight: 900;
+      font-size: 2.6rem;
+      background: linear-gradient(90deg,#ff0000,#ffcc00,#00ff66,#00ccff);
+      -webkit-background-clip: text;
+      color: transparent;
+      text-align: center;
+      text-shadow: 0 0 8px rgba(255,255,255,0.6);
+    }
+
+    .sub {
+      text-align:center;
+      color: rgba(255,255,255,0.85);
+    }
+
+    /* 🌟 Tarjetas más navideñas */
+    .card {
+      background: rgba(0,0,0,0.55);
+      border: 2px solid rgba(255,0,0,0.35); /* borde rojo navideño */
+      box-shadow: 0 0 18px rgba(0,255,120,0.35);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    /* 🎄 Termómetros navideños */
+    .thermo {
+      width: 86px;
+      height: 260px;
+      border-radius: 48px;
+      background: rgba(255,255,255,0.08);
+      padding: 10px;
+      display:flex;
+      align-items:flex-end;
+      position:relative;
+      border: 2px solid rgba(255,255,255,0.3);
+      box-shadow: inset 0 0 12px rgba(255,0,0,0.45);
+    }
+
+    .fill {
+      width: 48%;
+      height: 4%;
+      border-radius: 32px;
+      transition: height 600ms;
+    }
+
+    /* Colores navideños más fuertes */
+    .cold  { background: linear-gradient(180deg,#66ccff,#0044aa); }
+    .ok    { background: linear-gradient(180deg,#00ff88,#009944); }
+    .warm  { background: linear-gradient(180deg,#ffcc00,#ff6600); }
+    .hot   { background: linear-gradient(180deg,#ff3333,#aa0000); }
+
+    .bulb {
+      position:absolute;
+      bottom:-12px;
+      width:62px;
+      height:62px;
+      border-radius:50%;
+      background:rgba(255,0,0,0.5);
+      box-shadow: 0 0 14px rgba(255,50,50,0.8);
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ❄ GENERADOR DE NIEVE -->
+<script>
+  let nieveActiva = true;
+
+  function crearNieve() {
+    if (!nieveActiva) return;
+
+    const snow = document.createElement("div");
+    snow.classList.add("snowflake");
+    snow.textContent = "❄";
+
+    snow.style.left = Math.random() * 100 + "vw";
+    snow.style.fontSize = (Math.random() * 10 + 10) + "px";
+    snow.style.animationDuration = (Math.random() * 3 + 2) + "s";
+
+    document.body.appendChild(snow);
+
+    setTimeout(() => snow.remove(), 5000);
+  }
+
+  setInterval(crearNieve, 120);
+
+  function controlarNieve(tempGeneral) {
+      if (tempGeneral > 25) {
+          nieveActiva = false;
+          document.querySelectorAll(".snowflake").forEach(f => f.remove());
+      } else {
+          nieveActiva = true;
+      }
+  }
+</script>
+
+<div class="overlay">
+<div class="max-w-6xl mx-auto px-6 py-8">
+<header class="text-center mb-6">
+<h1 class="brand-title">MONITOREO DE TEMPERATURA</h1>
+<p class="sub mt-2">Desarrolladores: Joel — Alexis — Sebastián</p>
+<p class="sub text-sm mt-1" id="fecha"></p>
+</header>
+
+<!-- ESTADO / CONFIG FIREBASE -->
+<div class="flex flex-col md:flex-row gap-6 mb-6 items-start">
+<div class="card flex-1">
+<div class="flex items-center gap-4">
+<div id="estadoDot" style="width:12px;height:12px;border-radius:999px;background:red;"></div>
+<div>
+<div id="estadoTexto" class="text-red-400 font-semibold">Sin conexión</div>
+<div class="text-xs text-slate-300">Ingrese configuración Firebase</div>
+</div>
+</div>
+</div>
+
+<div class="card w-full md:w-96">
+<div class="text-sm text-slate-300 mb-2 font-semibold">Configurar Firebase (solo 1 vez)</div>
+<input id="apiKeyInput" class="w-full p-2 rounded-md mb-2 bg-[rgba(255,255,255,0.07)] text-white" placeholder="API KEY">
+<input id="dbUrlInput" class="w-full p-2 rounded-md mb-3 bg-[rgba(255,255,255,0.07)] text-white" placeholder="DATABASE URL (https://xxxx.firebaseio.com/)">
+<button class="bg-green-400 text-black font-bold p-2 rounded w-full" onclick="guardarFirebaseConfig()">GUARDAR CONFIGURACIÓN</button>
+<p class="text-xs text-slate-400 mt-2">La configuración se guarda en <b>localStorage</b>.</p>
+</div>
+</div>
+
+<!-- GENERAL -->
+<section class="card mb-6">
+<div class="flex items-center justify-between">
+<div>
+<h2 class="text-xl font-extrabold text-yellow-300">Temperatura General</h2>
+</div>
+
+<div class="flex items-center gap-6">
+<div class="thermo">
+<div id="fillG" class="fill cold"></div>
+<div class="bulb"></div>
+</div>
+<div class="text-4xl font-extrabold text-green-300" id="valG">0 °C</div>
+</div>
+</div>
+</section>
+
+<!-- SENSORES -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+<div class="card flex items-center gap-6">
+<h3 class="text-lg font-bold text-red-300">Sensor 1</h3>
+<div class="ml-auto flex items-center gap-6">
+<div class="thermo"><div id="fill1" class="fill cold"></div><div class="bulb"></div></div>
+<div class="text-3xl font-extrabold text-green-200" id="val1">0 °C</div>
+</div>
+</div>
+
+<div class="card flex items-center gap-6">
+<h3 class="text-lg font-bold text-red-300">Sensor 2</h3>
+<div class="ml-auto flex items-center gap-6">
+<div class="thermo"><div id="fill2" class="fill cold"></div><div class="bulb"></div></div>
+<div class="text-3xl font-extrabold text-green-200" id="val2">0 °C</div>
+</div>
+</div>
+
+<div class="card flex items-center gap-6">
+<h3 class="text-lg font-bold text-red-300">Sensor 3</h3>
+<div class="ml-auto flex items-center gap-6">
+<div class="thermo"><div id="fill3" class="fill cold"></div><div class="bulb"></div></div>
+<div class="text-3xl font-extrabold text-green-200" id="val3">0 °C</div>
+</div>
+</div>
+
+<div class="card flex items-center gap-6">
+<h3 class="text-lg font-bold text-red-300">Sensor 4</h3>
+<div class="ml-auto flex items-center gap-6">
+<div class="thermo"><div id="fill4" class="fill cold"></div><div class="bulb"></div></div>
+<div class="text-3xl font-extrabold text-green-200" id="val4">0 °C</div>
+</div>
+</div>
+
+</section>
+</div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+
+function actualizarFechaHora() {
+    document.getElementById("fecha").innerText =
+        new Date().toLocaleString("es-ES", {
+            dateStyle: "full",
+            timeStyle: "medium"
+        });
+}
+setInterval(actualizarFechaHora, 1000);
+actualizarFechaHora();
+
+
+function guardarFirebaseConfig(){
+  const apiKey = document.getElementById("apiKeyInput").value.trim();
+  const dbUrl = document.getElementById("dbUrlInput").value.trim();
+
+  if(!apiKey || !dbUrl){
+    alert("Completa todos los campos");
+    return;
+  }
+
+  localStorage.setItem("fb_apiKey", apiKey);
+  localStorage.setItem("fb_dbUrl", dbUrl);
+  location.reload();
+}
+
+const API = localStorage.getItem("fb_apiKey");
+const DBURL = localStorage.getItem("fb_dbUrl");
+
+function setValue(idFill, idVal, temp){
+  temp = Number(temp) || 0;
+  document.getElementById(idVal).innerText = temp.toFixed(1)+" °C";
+  document.getElementById(idFill).style.height = (4 + (temp/100)*96)+"%";
+}
+
+if(API && DBURL){
+  document.getElementById("estadoDot").style.background = "#34d399";
+  document.getElementById("estadoTexto").innerText = "Conectado a Firebase";
+
+  firebase.initializeApp({ apiKey: API, databaseURL: DBURL });
+
+  const db = firebase.database();
+  db.ref("sensores/s1").on("value", s => setValue("fill1","val1", s.val()));
+  db.ref("sensores/s2").on("value", s => setValue("fill2","val2", s.val()));
+  db.ref("sensores/s3").on("value", s => setValue("fill3","val3", s.val()));
+  db.ref("sensores/s4").on("value", s => setValue("fill4","val4", s.val()));
+
+  db.ref("sensores/general").on("value", s => {
+      const temp = s.val();
+      setValue("fillG","valG", temp);
+      controlarNieve(temp);
+  });
+
+} else {
+  document.getElementById("estadoDot").style.background = "red";
+  document.getElementById("estadoTexto").innerText = "Sin conexión";
+}
+</script>
+
+</body>
+</html>
